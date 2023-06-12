@@ -223,7 +223,7 @@ class _WistiaPlayerState extends State<WistiaPlayer>
             body {
                 margin: 0;
                 padding: 0;
-                background-color: #000000;
+                background-color: ${controller.options.playerColor};
                 opacity: 0
                 overflow: hidden;
                 position: fixed;
