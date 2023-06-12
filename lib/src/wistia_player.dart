@@ -136,7 +136,37 @@ class _WistiaPlayerState extends State<WistiaPlayer>
 
   @override
   Widget build(BuildContext context) {
+    if (controller?.value.webViewController != null) {
+      controller!.value.webViewController!
+        ..setJavaScriptMode(JavaScriptMode.unrestricted)
+        ..setUserAgent(userAgent)
+        ..addJavaScriptChannel('WistiaWebView', onMessageReceived: (message) {
+          Map<String, dynamic> jsonMessage = jsonDecode(message.message);
+          switch (jsonMessage['method']) {
+            case 'Ready':
+              {
+                controller
+                    ?.updateValue(controller!.value.copyWith(isReady: true));
+                break;
+              }
+            case 'Ended':
+              {
+                print('Video has ended');
+                if (widget.onEnded != null) {
+                  widget.onEnded!(WistiaMetaData.fromJson(jsonMessage));
+                }
+              }
+          }
+        });
+    } else {
+      return Center(
+        child: Text("Player not initialized"),
+      );
+    }
     return WebViewWidget(
+      controller: controller!.value.webViewController!,
+    );
+    /*return WebView(
       key: widget.key,
       initialUrl: 'about:blank',
       allowsInlineMediaPlayback: true,
@@ -147,7 +177,7 @@ class _WistiaPlayerState extends State<WistiaPlayer>
       initialMediaPlaybackPolicy: AutoMediaPlaybackPolicy.always_allow,
       javascriptChannels: Set()..add(_getJavascriptChannel()),
       userAgent: userAgent,
-    );
+    );*/
   }
 
   void _handleWebResourceError(WebResourceError error) {
@@ -158,7 +188,7 @@ class _WistiaPlayerState extends State<WistiaPlayer>
     print(error);
   }
 
-  JavascriptChannel _getJavascriptChannel() {
+  /*JavascriptChannel _getJavascriptChannel() {
     return JavascriptChannel(
         name: 'WistiaWebView',
         onMessageReceived: (JavascriptMessage message) {
@@ -179,15 +209,15 @@ class _WistiaPlayerState extends State<WistiaPlayer>
               }
           }
         });
-  }
+  }*/
 
   void _onWebViewCreated(WebViewController webViewController) {
-    webViewController.loadUrl(
+    webViewController.loadRequest(
       Uri.dataFromString(
         _buildWistiaHTML(controller!),
         mimeType: 'text/html',
         encoding: Encoding.getByName('utf-8'),
-      ).toString(),
+      ),
     );
 
     controller?.updateValue(

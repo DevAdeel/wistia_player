@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import 'wistia_player_options.dart';
 import 'wistia_player_value.dart';
 
@@ -22,7 +23,8 @@ class WistiaPlayerController extends ValueNotifier<WistiaPlayerValue> {
   }
 
   _callMethod(String methodString) {
-    value.webViewController?.evaluateJavascript(methodString);
+    value.webViewController?.runJavaScript(methodString);
+    //value.webViewController?.evaluateJavascript(methodString);
   }
 
   bool _isDisposed = false;
