@@ -51,6 +51,7 @@ class _WistiaPlayerState extends State<WistiaPlayer>
   WistiaPlayerController? controller;
   WistiaPlayerState? _cachedPlayerState;
   bool _initialLoad = true;
+  late WebViewController webController;
 
   @override
   void initState() {
@@ -59,6 +60,32 @@ class _WistiaPlayerState extends State<WistiaPlayer>
     if (!widget.controller.hasDisposed) {
       this.controller = widget.controller..addListener(listener);
     }
+    webController = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setUserAgent(userAgent)
+      ..loadRequest(Uri.dataFromString(
+        _buildWistiaHTML(controller!),
+        mimeType: 'text/html',
+        encoding: Encoding.getByName('utf-8'),
+      ))
+      ..addJavaScriptChannel('WistiaWebView', onMessageReceived: (message) {
+        Map<String, dynamic> jsonMessage = jsonDecode(message.message);
+        switch (jsonMessage['method']) {
+          case 'Ready':
+            {
+              controller
+                  ?.updateValue(controller!.value.copyWith(isReady: true));
+              break;
+            }
+          case 'Ended':
+            {
+              print('Video has ended');
+              if (widget.onEnded != null) {
+                widget.onEnded!(WistiaMetaData.fromJson(jsonMessage));
+              }
+            }
+        }
+      });
 
     super.initState();
   }
@@ -136,48 +163,9 @@ class _WistiaPlayerState extends State<WistiaPlayer>
 
   @override
   Widget build(BuildContext context) {
-    if (controller?.value.webViewController != null) {
-      controller!.value.webViewController!
-        ..setJavaScriptMode(JavaScriptMode.unrestricted)
-        ..setUserAgent(userAgent)
-        ..addJavaScriptChannel('WistiaWebView', onMessageReceived: (message) {
-          Map<String, dynamic> jsonMessage = jsonDecode(message.message);
-          switch (jsonMessage['method']) {
-            case 'Ready':
-              {
-                controller
-                    ?.updateValue(controller!.value.copyWith(isReady: true));
-                break;
-              }
-            case 'Ended':
-              {
-                print('Video has ended');
-                if (widget.onEnded != null) {
-                  widget.onEnded!(WistiaMetaData.fromJson(jsonMessage));
-                }
-              }
-          }
-        });
-    } else {
-      return Center(
-        child: Text("Player not initialized"),
-      );
-    }
     return WebViewWidget(
-      controller: controller!.value.webViewController!,
+      controller: webController,
     );
-    /*return WebView(
-      key: widget.key,
-      initialUrl: 'about:blank',
-      allowsInlineMediaPlayback: true,
-      javascriptMode: JavascriptMode.unrestricted,
-      onWebViewCreated: _onWebViewCreated,
-      onWebResourceError: _handleWebResourceError,
-      debuggingEnabled: true,
-      initialMediaPlaybackPolicy: AutoMediaPlaybackPolicy.always_allow,
-      javascriptChannels: Set()..add(_getJavascriptChannel()),
-      userAgent: userAgent,
-    );*/
   }
 
   void _handleWebResourceError(WebResourceError error) {
